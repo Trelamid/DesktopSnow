@@ -38,8 +38,7 @@ hands-on GUI testing.
 ```bash
 xcode-select --install
 brew install cmake ninja
-bash scripts/build_mac.sh
-open build-native/desktop_snow.app
+bash scripts/build_mac.sh && open build-native/desktop_snow.app
 ```
 
 Первый запуск CMake загружает исходники **GLFW 3.4** с GitHub. Нужен интернет.
@@ -129,6 +128,9 @@ ctest --test-dir build-sanitized --output-on-failure
 bash scripts/check_frontend_syntax.sh
 ```
 
+Отдельно измеряется обновление оконной геометрии: `./build-tests/snow_scene_benchmark`
+(потребление ресурсов оконной системы этот тест не включает).
+
 **Проверить реальные FPS, GPU %, CPU %, RAM, энергопотребление и click-through
 надо на целевых машинах.** См. `tests/SMOKE_TEST_CHECKLIST.md`.
 
@@ -158,6 +160,7 @@ bash scripts/check_frontend_syntax.sh
 - `src/main.cpp` — цикл, энергосбережение, мониторы, настройки.
 - `src/platform_mac.mm` — AppKit + CoreGraphics.
 - `src/platform_win.cpp` — Win32 + DWM + system tray.
-- `tests/tests.cpp` — 10 групп юнит-тестов, включая коллизии и Z-order.
+- `tests/tests.cpp` — 13 групп юнит-тестов, включая коллизии и Z-order.
 - `tests/benchmark.cpp` — CPU-микробенчмарк.
+- `tests/scene_benchmark.cpp` — стоимость обновления сцены для 250 окон.
 - `.github/workflows/build.yml` — будущая нативная CI-сборка и пакеты.

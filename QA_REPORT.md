@@ -5,7 +5,7 @@
 | Проверка | Метод | Результат |
 |---|---|---|
 | C++17 engine, GCC 14.2, x86_64 Linux | CMake Ninja Release | PASS |
-| 11 групп функциональных тестов | `ctest` Release | PASS |
+| 13 групп функциональных тестов | `ctest` Release | PASS |
 | Физика и геометрия сугробов | окно / перенос / ресайз / Z-order | PASS |
 | Отрицательные координаты экранов | Unit test | PASS |
 | Фиксированный seed и ветер | Unit test | PASS |
@@ -17,6 +17,15 @@
 | CPU benchmark (2 simulated monitors, 75 windows, 3000 frames per monitor) | Release x86_64 Linux | ~0.031–0.036 ms/monitor/frame |
 
 Performance figure is **CPU simulation + mesh construction only**.
+
+Audit update: 250-window scene benchmark (3840x2160, 100 repeated snapshots,
+100 moving snapshots, Linux x86-64): ~0.014 ms per unchanged snapshot,
+~0.17 ms per moving snapshot in this container. Previous implementation took
+~0.49 ms for both cases. These values exclude the native API query, GPU and compositor.
+Fixed the GLFW native-header include order on both platforms, fixed simulation
+slowdown at 15 FPS, and added unchanged-scene caching and interval-sweep occlusion.
+Native compilation remains **UNVERIFIED** until build logs pass.
+
 It excludes OS window enumeration, GPU driver, OpenGL rendering and OS compositor.
 It cannot establish real macOS M1 performance.
 

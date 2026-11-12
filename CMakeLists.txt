@@ -43,6 +43,8 @@ if(SNOW_BUILD_TESTS)
   add_test(NAME SnowEngine COMMAND snow_tests)
   add_executable(snow_benchmark tests/benchmark.cpp)
   target_link_libraries(snow_benchmark PRIVATE snow_engine)
+  add_executable(snow_scene_benchmark tests/scene_benchmark.cpp)
+  target_link_libraries(snow_scene_benchmark PRIVATE snow_engine)
 endif()
 
 if(SNOW_BUILD_DESKTOP)

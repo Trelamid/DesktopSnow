@@ -1,9 +1,9 @@
 #import <AppKit/AppKit.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
+#include "platform.hpp" // Includes glfw3.h, required before glfw3native.h
 #define GLFW_EXPOSE_NATIVE_COCOA
 #import <GLFW/glfw3native.h>
-#include "platform.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>

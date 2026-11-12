@@ -18,6 +18,8 @@ jobs:
         run: ctest --test-dir build --output-on-failure
       - name: CPU benchmark
         run: ./build/snow_benchmark 3000
+      - name: Scene update benchmark
+        run: ./build/snow_scene_benchmark
       - name: Ad-hoc sign locally (not notarization)
         run: codesign --force --deep --sign - build/desktop_snow.app
       - name: Package app
@@ -40,6 +42,8 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
       - name: CPU benchmark
         run: ./build/Release/snow_benchmark.exe 3000
+      - name: Scene update benchmark
+        run: ./build/Release/snow_scene_benchmark.exe
       - name: Package exe
         shell: pwsh
         run: Compress-Archive -Path build/Release/desktop_snow.exe -DestinationPath DesktopSnow-Windows-x64.zip
@@ -57,4 +61,5 @@ jobs:
       - run: cmake --build build --parallel
       - run: ctest --test-dir build --output-on-failure
       - run: ./build/snow_benchmark 3000
+      - run: ./build/snow_scene_benchmark
       - run: bash scripts/check_frontend_syntax.sh

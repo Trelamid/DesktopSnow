@@ -63,15 +63,6 @@ void World::set_viewport(Rect viewport) {
 
 void World::set_surfaces(const std::vector<SurfaceInput>& inputs) {
     if (viewport_.w <= 0 || viewport_.h <= 0) return;
-    std::unordered_map<std::uint64_t, Surface> old;
-    old.reserve(surfaces_.size());
-    std::vector<std::uint64_t> old_order;
-    old_order.reserve(surfaces_.size());
-    for (auto& s : surfaces_) {
-        old_order.push_back(s.id);
-        old.emplace(s.id, std::move(s));
-    }
-
     std::vector<SurfaceInput> all;
     all.reserve(inputs.size() + 1);
     std::unordered_set<std::uint64_t> used;
@@ -88,6 +79,32 @@ void World::set_surfaces(const std::vector<SurfaceInput>& inputs) {
     }
     all.push_back({kGroundID,
                    {viewport_.x, viewport_.bottom() - 1.0f, viewport_.w, 12.0f}, false});
+
+    // Geometry snapshots arrive several times per second, usually unchanged.
+    // Reuse cached bins, snow heights, occlusion and collision columns in that case.
+    if (all.size() == surfaces_.size()) {
+        bool identical = true;
+        for (std::size_t i = 0; i < all.size(); ++i) {
+            const auto& a = all[i];
+            const auto& b = surfaces_[i];
+            if (a.id != b.id || a.dock != b.dock ||
+                a.bounds.x != b.rect.x || a.bounds.y != b.rect.y ||
+                a.bounds.w != b.rect.w || a.bounds.h != b.rect.h) {
+                identical = false;
+                break;
+            }
+        }
+        if (identical) return;
+    }
+
+    std::unordered_map<std::uint64_t, Surface> old;
+    old.reserve(surfaces_.size());
+    std::vector<std::uint64_t> old_order;
+    old_order.reserve(surfaces_.size());
+    for (auto& s : surfaces_) {
+        old_order.push_back(s.id);
+        old.emplace(s.id, std::move(s));
+    }
 
     surfaces_.clear();
     surfaces_.reserve(all.size());
@@ -121,27 +138,39 @@ void World::set_surfaces(const std::vector<SurfaceInput>& inputs) {
         }
         surfaces_.push_back(std::move(s));
     }
-    // Input order is front-to-back (native OS z-order). Hide pile bins whose
-    // supporting window edge is covered by a foreground window.
+    // Input order is front-to-back (native OS Z-order). For each supporting
+    // edge, project foreground rectangles at that Y into sorted X intervals.
+    // Sweep once over the snow bins: O(windows^2 log windows + total_bins),
+    // instead of testing every foreground window at every snow bin.
+    std::vector<std::pair<float, float>> occluders;
+    occluders.reserve(surfaces_.size());
     for (std::size_t i = 0; i < surfaces_.size(); ++i) {
         Surface& support = surfaces_[i];
         support.visible.assign(support.heights.size(), 1);
+        const float edge_y = support.rect.y - 0.5f;
+        occluders.clear();
+        for (std::size_t front_index = 0; front_index < i; ++front_index) {
+            const Rect& front = surfaces_[front_index].rect;
+            if (edge_y >= front.y && edge_y < front.bottom() &&
+                front.right() > support.rect.x && front.x < support.rect.right()) {
+                occluders.emplace_back(front.x, front.right());
+            }
+        }
+        std::sort(occluders.begin(), occluders.end());
+        std::size_t next = 0;
+        float covered_until = -std::numeric_limits<float>::infinity();
         for (std::size_t bin = 0; bin < support.visible.size(); ++bin) {
             const float x = support.rect.x + std::min(support.rect.w - 0.1f,
                                                        (bin + 0.5f) * kBinWidth);
-            const float y = support.rect.y - 0.5f;
-            for (std::size_t front_index = 0; front_index < i; ++front_index) {
-                const Rect& front = surfaces_[front_index].rect;
-                if (x >= front.x && x < front.right() &&
-                    y >= front.y && y < front.bottom()) {
-                    support.visible[bin] = 0;
-                    break;
-                }
+            while (next < occluders.size() && occluders[next].first <= x) {
+                covered_until = std::max(covered_until, occluders[next].second);
+                ++next;
             }
+            if (x < covered_until) support.visible[bin] = 0;
         }
     }
-    if (changed) ++geometry_version_;
     rebuild_columns();
+    if (changed) ++geometry_version_;
     // Balls on closed windows disappear, as on a real moved-away surface.
     balls_.erase(std::remove_if(balls_.begin(), balls_.end(), [this](const Ball& b) {
         return find_surface(b.id) == nullptr;
@@ -257,7 +286,7 @@ void World::step(float delta_seconds, const Settings& settings, Cursor cursor) {
         return;
     }
     // Prevent huge physics jumps after sleep, display changes, or the debugger.
-    const float dt = clampf(delta_seconds, 0.0f, 0.05f);
+    const float dt = clampf(delta_seconds, 0.0f, 0.10f); // 15 FPS needs 66.7 ms of simulation time.
     const float intensity = settings.intensity == Intensity::Light ? 0.40f :
                             settings.intensity == Intensity::Blizzard ? 2.0f : 1.0f;
     const std::size_t target = std::min(kMaxParticles,

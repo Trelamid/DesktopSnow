@@ -216,6 +216,33 @@ void test_tools_safe() {
     (void)particles_before;
 }
 
+void test_framerate_independent_simulation_time() {
+    // Equal elapsed time must create equal flakes at 15 and 30 fps.
+    // The old 50 ms dt clamp made 15 fps snow fall/spawn too slowly.
+    World slow({0,0,1600,4000}, 123), fast({0,0,1600,4000}, 123);
+    Settings cfg;
+    for (int i = 0; i < 15; ++i) slow.step(1.0f / 15.0f, cfg);
+    for (int i = 0; i < 30; ++i) fast.step(1.0f / 30.0f, cfg);
+    CHECK(std::abs(static_cast<int>(slow.stats().particles) -
+                   static_cast<int>(fast.stats().particles)) <= 1);
+}
+
+void test_unchanged_scene_keeps_cached_geometry() {
+    World w({0,0,1500,900}, 55);
+    std::vector<SurfaceInput> surfaces;
+    for (int i = 0; i < 240; ++i)
+        surfaces.push_back({static_cast<std::uint64_t>(i+1),
+          {float((i*233)%1490),float((i*107)%800),200,120},false});
+    w.set_surfaces(surfaces);
+    const auto version = w.geometry_version();
+    for (int i = 0; i < 50; ++i) w.set_surfaces(surfaces);
+    CHECK(w.geometry_version() == version);
+    CHECK(w.stats().surfaces == 241);
+    surfaces[60].bounds.x += 3;
+    w.set_surfaces(surfaces);
+    CHECK(w.geometry_version() > version);
+}
+
 int main() {
     test_initialization();
     test_snow_on_window_and_move();
@@ -228,5 +255,7 @@ int main() {
     test_negative_monitor_coordinates();
     test_randomized_stress();
     test_tools_safe();
-    std::cout << "OK: " << checks << " assertions across 11 test groups\n";
+    test_framerate_independent_simulation_time();
+    test_unchanged_scene_keeps_cached_geometry();
+    std::cout << "OK: " << checks << " assertions across 13 test groups\n";
 }

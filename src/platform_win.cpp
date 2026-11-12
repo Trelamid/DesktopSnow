@@ -1,4 +1,4 @@
-#include "platform.hpp"
+#include "platform.hpp" // Includes glfw3.h, required before glfw3native.h
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3native.h>
 #include <windows.h>
