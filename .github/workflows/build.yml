@@ -11,17 +11,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Configure native macOS app
-        run: cmake -S . -B build -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
       - name: Build
-        run: cmake --build build --config Release --parallel 4
+        run: cmake --build build --parallel 4
       - name: Unit tests
-        run: ctest --test-dir build -C Release --output-on-failure
+        run: ctest --test-dir build --output-on-failure
       - name: CPU benchmark
-        run: ./build/Release/snow_benchmark 3000
+        run: ./build/snow_benchmark 3000
       - name: Ad-hoc sign locally (not notarization)
-        run: codesign --force --deep --sign - build/Release/desktop_snow.app
+        run: codesign --force --deep --sign - build/desktop_snow.app
       - name: Package app
-        run: cd build/Release && zip -qry ../../DesktopSnow-macOS-arm64.zip desktop_snow.app
+        run: cd build && zip -qry ../DesktopSnow-macOS-arm64.zip desktop_snow.app
       - uses: actions/upload-artifact@v4
         with:
           name: DesktopSnow-macOS-arm64
