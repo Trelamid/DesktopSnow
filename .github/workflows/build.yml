@@ -1,0 +1,60 @@
+name: Verify and package desktop snow
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  macos-arm64:
+    runs-on: macos-15-arm64
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure native macOS app
+        run: cmake -S . -B build -G Xcode -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: CPU benchmark
+        run: ./build/Release/snow_benchmark 3000
+      - name: Ad-hoc sign locally (not notarization)
+        run: codesign --force --deep --sign - build/Release/desktop_snow.app
+      - name: Package app
+        run: cd build/Release && zip -qry ../../DesktopSnow-macOS-arm64.zip desktop_snow.app
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DesktopSnow-macOS-arm64
+          path: DesktopSnow-macOS-arm64.zip
+
+  windows-x64:
+    runs-on: windows-2022
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure native Windows app
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+      - name: Build
+        run: cmake --build build --config Release --parallel 4
+      - name: Unit tests
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: CPU benchmark
+        run: ./build/Release/snow_benchmark.exe 3000
+      - name: Package exe
+        shell: pwsh
+        run: Compress-Archive -Path build/Release/desktop_snow.exe -DestinationPath DesktopSnow-Windows-x64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DesktopSnow-Windows-x64
+          path: DesktopSnow-Windows-x64.zip
+
+  linux-engine-check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DSNOW_BUILD_DESKTOP=OFF
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build --output-on-failure
+      - run: ./build/snow_benchmark 3000
+      - run: bash scripts/check_frontend_syntax.sh
