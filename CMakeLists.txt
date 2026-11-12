@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.21)
-project(DesktopSnow VERSION 0.1.0 LANGUAGES CXX)
+# Enable Objective-C++ during project initialization on macOS.
+# Enabling it after FetchContent/add_executable may leave Ninja's OBJCXX
+# compile/archive rules uninitialized in some CMake versions.
+if(APPLE)
+  project(DesktopSnow VERSION 0.1.0 LANGUAGES CXX OBJCXX)
+else()
+  project(DesktopSnow VERSION 0.1.0 LANGUAGES CXX)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -54,7 +61,6 @@ if(SNOW_BUILD_DESKTOP)
   target_include_directories(desktop_snow PRIVATE src)
   target_link_libraries(desktop_snow PRIVATE snow_engine glfw)
   if(APPLE)
-    enable_language(OBJCXX)
     target_sources(desktop_snow PRIVATE src/platform_mac.mm)
     target_link_libraries(desktop_snow PRIVATE "-framework AppKit" "-framework CoreGraphics" "-framework Foundation")
     set_target_properties(desktop_snow PROPERTIES MACOSX_BUNDLE TRUE
